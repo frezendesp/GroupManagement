@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Distribution Groups - Distribution Group Management{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Home</a></li>
+<li class="breadcrumb-item active">Distribution Groups</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">
+                <i class="bi bi-collection me-2 text-primary"></i>
+                Distribution Groups
+            </h1>
+            {% if current_user.can_manage_groups or current_user.is_admin %}
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+                <i class="bi bi-plus-circle me-2"></i>Create Group
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" class="form-control" name="search" 
+                                   value="{{ search }}" placeholder="Search groups by name or description...">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search me-2"></i>Search
+                            </button>
+                            {% if search %}
+                            <a href="{{ url_for('main.groups') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Clear
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Groups Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0">
+            <div class="card-body">
+                {% if groups.items %}
+                <div class="table-responsive">
+                    <table class="table table-hover" id="groupsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Group Name</th>
+                                <th>Email</th>
+                                <th>Description</th>
+                                <th>Members</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for group in groups.items %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-collection text-primary me-2"></i>
+                                        <strong>{{ group.name }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="mailto:{{ group.email }}" class="text-decoration-none">
+                                        {{ group.email }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="text-muted">
+                                        {{ group.description[:50] + '...' if group.description and group.description|length > 50 else group.description or 'No description' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">
+                                        {{ group.members|length }} member{{ 's' if group.members|length != 1 else '' }}
+                                    </span>
+                                </td>
+                                <td class="text-muted">
+                                    {{ group.created_at.strftime('%Y-%m-%d') }}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('main.group_detail', group_id=group.id) }}" 
+                                           class="btn btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('main.group_membership_report', group_id=group.id) }}" 
+                                           class="btn btn-outline-success">
+                                            <i class="bi bi-file-earmark-text"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if groups.pages > 1 %}
+                <nav aria-label="Groups pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if groups.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.groups', page=groups.prev_num, search=search) }}">
+                                Previous
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in groups.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != groups.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('main.groups', page=page_num, search=search) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                                {% endif %}
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if groups.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.groups', page=groups.next_num, search=search) }}">
+                                Next
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-collection text-muted" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3 text-muted">No Groups Found</h4>
+                    <p class="text-muted">
+                        {% if search %}
+                            No groups match your search criteria.
+                        {% else %}
+                            No distribution groups have been created yet.
+                        {% endif %}
+                    </p>
+                    {% if current_user.can_manage_groups or current_user.is_admin %}
+                    <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+                        <i class="bi bi-plus-circle me-2"></i>Create First Group
+                    </button>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Group Modal -->
+{% if current_user.can_manage_groups or current_user.is_admin %}
+<div class="modal fade" id="createGroupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Distribution Group</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('main.create_group') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="groupName" class="form-label">Group Name *</label>
+                        <input type="text" class="form-control" id="groupName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="groupEmail" class="form-label">Email Address *</label>
+                        <input type="email" class="form-control" id="groupEmail" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="groupDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="groupDescription" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Group</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#groupsTable').DataTable({
+        "pageLength": 10,
+        "searching": false,
+        "lengthChange": false,
+        "info": false,
+        "paging": false,
+        "order": [[0, "asc"]]
+    });
+});
+</script>
+{% endblock %}
